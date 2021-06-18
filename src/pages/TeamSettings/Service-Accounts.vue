@@ -39,7 +39,22 @@ export default {
       serviceAccountsSignal: 0,
       roleInput: null,
       updateAccountRole: false,
-      serviceAccountID: null
+      serviceAccountID: null,
+      // Role maps
+      roleMap: {
+        USER: 'User',
+        READ_ONLY_USER: 'Read-Only',
+        TENANT_ADMIN: 'Administrator',
+        PENDING: 'Pending',
+        ENTERPRISE_LICENSE_ADMIN: 'License Administrator'
+      },
+      roleColorMap: {
+        USER: 'codeBlueBright',
+        ENTERPRISE_LICENSE_ADMIN: 'cloudUIPrimaryBlue',
+        READ_ONLY_USER: 'cloudUIPrimaryDark',
+        TENANT_ADMIN: 'cloudUIPrimaryBlue',
+        PENDING: 'accentOrange'
+      }
     }
   },
   computed: {
@@ -56,6 +71,13 @@ export default {
       return this.updateAccountRole
         ? 'Update service account role'
         : 'Add a new service account'
+    },
+    permissionsCheck() {
+      return (
+        this.hasPermission('create', 'service-account') &&
+        this.hasPermission('update', 'service-account') &&
+        this.hasPermission('delete', 'service-account')
+      )
     }
   },
   watch: {
@@ -146,7 +168,49 @@ export default {
       this.serviceAccountNameInput = event.firstName
       this.serviceAccountID = event.membershipID
       this.dialogAddServiceAccount = true
+    },
+    titleCase(str) {
+      return str.replace(/\b\S/g, t => t.toUpperCase())
+    },
+    formatName(roles) {
+      if (!roles) return []
+      const defaultRoles = roles
+        ?.filter(role => this.roleMap[role.name])
+        .map(item => ({
+          ...item,
+          value: this.titleCase(
+            item.name
+              .split('_')
+              .join(' ')
+              .toLowerCase()
+          )
+        }))
+
+      const tenantRoles = roles
+        ?.filter(role => role.tenant_id === this.tenant.id)
+        .map(word => ({ ...word, value: word.name }))
+
+      return defaultRoles.concat(tenantRoles)
     }
+    // formatName(roles) {
+    //   if (!roles) return []
+    //   const defaultRoles = roles
+    //     ?.filter(role => this.roleMap[role.name])
+    //     .map(
+    //       word =>
+    //         word.name.charAt(0).toUpperCase() +
+    //         word.name
+    //           .substr(1)
+    //           .toLowerCase()
+    //           .split('_')
+    //           .join(' ')
+    //     )
+    //   const tenantRoles = roles
+    //     ?.filter(role => role.tenant_id === this.tenant.id)
+    //     .map(word => word.name)
+
+    //   return defaultRoles.concat(tenantRoles)
+    // }
   },
   apollo: {
     roles: {
@@ -167,7 +231,7 @@ export default {
     <template #title>Service Accounts</template>
 
     <template #subtitle>
-      <span v-if="isTenantAdmin">
+      <span v-if="permissionsCheck">
         Manage service accounts and their API keys
       </span>
       <span v-else
@@ -175,7 +239,7 @@ export default {
       >
     </template>
 
-    <template v-if="isTenantAdmin" #cta>
+    <template v-if="permissionsCheck" #cta>
       <v-btn
         color="primary"
         class="white--text"
@@ -190,7 +254,7 @@ export default {
       </v-btn>
     </template>
 
-    <v-card v-if="isTenantAdmin" tile>
+    <v-card v-if="permissionsCheck" tile>
       <v-card-text class="pa-0">
         <v-text-field
           v-if="!$vuetify.breakpoint.mdAndUp"
@@ -206,7 +270,7 @@ export default {
         ></v-text-field>
 
         <ServiceAccountsTable
-          :is-tenant-admin="isTenantAdmin"
+          :permissions-check="permissionsCheck"
           :search="searchInput"
           :tenant="tenant"
           :refetch-signal="serviceAccountsSignal"
@@ -219,7 +283,7 @@ export default {
 
     <!-- SERVICE ACCOUNT ADD DIALOG -->
     <ConfirmDialog
-      v-if="isTenantAdmin"
+      v-if="permissionsCheck"
       v-model="dialogAddServiceAccount"
       :title="titleText"
       :confirm-text="confirmText"
@@ -260,11 +324,10 @@ export default {
           label="Role"
           data-cy="invite-role"
           prepend-icon="supervised_user_circle"
-          :items="roles"
+          :items="formatName(roles)"
           :rules="[rules.required]"
-          item-text="name"
+          item-text="value"
           item-value="id"
-          item-disabled="disabled"
         >
         </v-select>
       </v-form>

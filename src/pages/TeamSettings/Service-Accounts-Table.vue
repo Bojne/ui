@@ -12,7 +12,7 @@ export default {
   mixins: [formatTime],
   props: {
     // Check admin privileges
-    isTenantAdmin: {
+    permissionsCheck: {
       type: Boolean,
       required: true
     },
@@ -89,7 +89,21 @@ export default {
       newAPIKey: '',
       newKeyName: '',
       keyToDelete: null,
-      dialogRemoveKey: false
+      dialogRemoveKey: false,
+
+      // Role maps
+      roleMap: {
+        USER: 'User',
+        READ_ONLY_USER: 'Read-Only',
+        TENANT_ADMIN: 'Administrator',
+        PENDING: 'Pending'
+      },
+      roleColorMap: {
+        USER: 'codeBlueBright',
+        READ_ONLY_USER: 'cloudUIPrimaryDark',
+        TENANT_ADMIN: 'cloudUIPrimaryBlue',
+        PENDING: 'accentOrange'
+      }
     }
   },
   computed: {
@@ -274,7 +288,7 @@ export default {
 <template>
   <div>
     <v-data-table
-      v-if="isTenantAdmin"
+      v-if="permissionsCheck"
       fixed-header
       show-expand
       :expanded.sync="expanded"
@@ -350,10 +364,22 @@ export default {
         </td>
       </template>
       <template #item.role="{ item }">
-        {{ item.role }}
+        <!-- {{ item.role }} -->
+
+        <v-chip
+          small
+          dark
+          :color="
+            !roleColorMap[item.role]
+              ? 'accentPink'
+              : roleColorMap[item.role] || 'secondaryLight'
+          "
+        >
+          {{ roleMap[item.role] || item.role }}
+        </v-chip>
       </template>
 
-      <template v-if="isTenantAdmin" #item.create="{ item }">
+      <template v-if="permissionsCheck" #item.create="{ item }">
         <v-btn
           small
           color="primary"
@@ -370,7 +396,7 @@ export default {
       </template>
 
       <!-- ACTIONS -->
-      <template v-if="isTenantAdmin" #item.actions="{ item }">
+      <template v-if="permissionsCheck" #item.actions="{ item }">
         <v-tooltip bottom>
           <template #activator="{ on }">
             <v-btn

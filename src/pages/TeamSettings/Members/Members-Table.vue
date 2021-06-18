@@ -1,6 +1,6 @@
 //Neaten Role names //Check that role setting works - seems not to like role_id
-- may be the gql query not the backend //Figure out clear and cancel and error
-handling
+- may be the gql query not the backend //Figure out clear and cancel and error -
+updating role does not refresh automatically handling
 
 <script>
 import ConfirmDialog from '@/components/ConfirmDialog'
@@ -12,7 +12,7 @@ export default {
   },
   props: {
     // Check admin privileges
-    isTenantAdmin: {
+    permissionsCheck: {
       type: Boolean,
       required: true
     },
@@ -276,14 +276,22 @@ export default {
 
       <!-- ROLE -->
       <template #item.role="{ item }">
-        <v-chip small dark :color="roleColorMap[item.role] || 'secondaryLight'">
+        <v-chip
+          small
+          dark
+          :color="
+            !roleColorMap[item.role]
+              ? 'accentPink'
+              : roleColorMap[item.role] || 'secondaryLight'
+          "
+        >
           {{ roleMap[item.role] || item.role }}
         </v-chip>
       </template>
 
       <!-- ACTIONS -->
-      <template v-if="isTenantAdmin" #item.actions="{ item }">
-        <v-tooltip bottom>
+      <template v-if="permissionsCheck" #item.actions="{ item }">
+        <v-tooltip v-if="hasPermission('feature', 'basic-rbac')" bottom>
           <template #activator="{ on }">
             <v-btn
               text
@@ -345,7 +353,7 @@ export default {
         :color="roleColorMap[roleInput]"
         prepend-icon="supervised_user_circle"
         :items="roles"
-        item-text="name"
+        item-text="value"
         item-value="id"
       >
         <!-- <template #item="{ item }">
