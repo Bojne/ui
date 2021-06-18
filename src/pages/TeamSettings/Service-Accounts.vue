@@ -43,10 +43,10 @@ export default {
       // Role maps
       roleMap: {
         USER: 'User',
-        READ_ONLY_USER: 'Read-Only',
+        READ_ONLY_USER: 'Read-only',
         TENANT_ADMIN: 'Administrator',
         PENDING: 'Pending',
-        ENTERPRISE_LICENSE_ADMIN: 'License Administrator'
+        ENTERPRISE_LICENSE_ADMIN: 'License administrator'
       },
       roleColorMap: {
         USER: 'codeBlueBright',
@@ -172,18 +172,14 @@ export default {
     titleCase(str) {
       return str.replace(/\b\S/g, t => t.toUpperCase())
     },
-    formatName(roles) {
+    formatRole(roles) {
       if (!roles) return []
+
       const defaultRoles = roles
         ?.filter(role => this.roleMap[role.name])
         .map(item => ({
           ...item,
-          value: this.titleCase(
-            item.name
-              .split('_')
-              .join(' ')
-              .toLowerCase()
-          )
+          value: this.roleMap[item.name]
         }))
 
       const tenantRoles = roles
@@ -324,7 +320,7 @@ export default {
           label="Role"
           data-cy="invite-role"
           prepend-icon="supervised_user_circle"
-          :items="formatName(roles)"
+          :items="formatRole(roles)"
           :rules="[rules.required]"
           item-text="value"
           item-value="id"
