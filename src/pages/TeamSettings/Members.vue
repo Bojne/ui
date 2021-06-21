@@ -18,6 +18,7 @@ export default {
   },
   data() {
     return {
+      roles: [],
       users: 0,
       invitations: 0,
       // Current tab
