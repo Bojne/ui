@@ -1,6 +1,6 @@
 <script>
 import { mapActions, mapGetters } from 'vuex'
-
+import { ROLE_MAP, ROLE_COLOR_MAP } from '@/utils/roles.js'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import ManagementLayout from '@/layouts/ManagementLayout'
 import ServiceAccountsTable from '@/pages/TeamSettings/Service-Accounts-Table'
@@ -41,20 +41,8 @@ export default {
       updateAccountRole: false,
       serviceAccountID: null,
       // Role maps
-      roleMap: {
-        USER: 'User',
-        READ_ONLY_USER: 'Read-only',
-        TENANT_ADMIN: 'Administrator',
-        PENDING: 'Pending',
-        ENTERPRISE_LICENSE_ADMIN: 'License administrator'
-      },
-      roleColorMap: {
-        USER: 'codeBlueBright',
-        ENTERPRISE_LICENSE_ADMIN: 'cloudUIPrimaryBlue',
-        READ_ONLY_USER: 'cloudUIPrimaryDark',
-        TENANT_ADMIN: 'cloudUIPrimaryBlue',
-        PENDING: 'accentOrange'
-      }
+      roleMap: ROLE_MAP,
+      roleColorMap: ROLE_COLOR_MAP
     }
   },
   computed: {
