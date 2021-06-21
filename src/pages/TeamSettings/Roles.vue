@@ -2,6 +2,7 @@
 import { mapActions, mapGetters } from 'vuex'
 import CreateRoleTable from '@/pages/TeamSettings/CreateRoleTable'
 import { formatTime } from '@/mixins/formatTimeMixin'
+import { ROLE_MAP } from '@/utils/roles.js'
 
 const DEFAULT_ROLES = [
   'TENANT_ADMIN',
@@ -17,6 +18,7 @@ export default {
   mixins: [formatTime],
   data() {
     return {
+      deleteSelected: null,
       loading: 0,
       template: null,
       deletingRole: null,
@@ -24,7 +26,9 @@ export default {
       useDefault: true,
       roleName: '',
       addRole: false,
-      roleId: null
+      roleId: null,
+      roleMap: ROLE_MAP,
+      defaultRole: null
     }
   },
   computed: {
@@ -64,6 +68,7 @@ export default {
           this.editedRoles?.defaultRoles?.filter(
             role => role.id === this.role
           )[0]
+        this.defaultRole = role
         this.template = role
       }
     },
@@ -75,32 +80,27 @@ export default {
     ...mapActions('alert', ['setAlert']),
     //We should update to use same formatting as in members page?
     formatName(name) {
-      const newName = name
-        .split('_')
-        .map(
-          word => word.charAt(0).toUpperCase() + word.substr(1).toLowerCase()
-        )
-      return newName.join(' ')
+      return this.roleMap[name]
     },
     handleRoleSelect(role, roleType) {
       this.useDefault = false
       this.roleId = null
       if (roleType === 'new') {
-        if (this.addRole) this.cancelAddName()
+        if (this.addRole) this.cancelAddName(false)
         else this.addRole = true
       } else {
         this.addRole = false
       }
       this.template = role
     },
-    cancelAddName() {
+    cancelAddName(changeRole = true) {
       this.roleName = ''
       this.addRole = false
+      if (changeRole) this.template = this.defaultRole
     },
-    refetch(id) {
-      this.$apollo.queries.roles.refetch()
-      this.cancelAddName()
-      if (id) this.roleId = id
+    async refetch() {
+      await this.$apollo.queries.roles.refetch()
+      if (this.addRole) this.cancelAddName()
     },
     async deleteRole(role) {
       this.deletingRole = role.id
@@ -156,29 +156,44 @@ export default {
 </script>
 
 <template>
-  <v-sheet height="85vH" class="app-background">
+  <v-sheet
+    v-if="!hasPermission('read', 'role')"
+    height="85vH"
+    class="app-background"
+  >
+    You do not have permission to access roles.
+  </v-sheet>
+  <v-sheet v-else height="85vH" class="app-background">
     <v-row>
       <v-col cols="3" class="pa-0 ma-0">
         <v-navigation-drawer permanent class="ma-0" width="100%">
           <v-list dense nav>
             <v-list-item>
               <v-list-item-content>
-                <v-list-item-title class="text-subtitle-1 mb-2 mt-4">
+                <v-list-item-title
+                  class="text-h5 font-weight-light text--secondary mb-2 pt-4"
+                >
                   Default Roles
                 </v-list-item-title>
-                <div v-if="loading" class="text-center">
-                  <v-progress-linear
-                    :width="5"
-                    color="primary"
-                    indeterminate
-                  ></v-progress-linear>
-                </div>
-                <v-divider v-else></v-divider>
+                <v-divider></v-divider>
               </v-list-item-content>
             </v-list-item>
+            <div v-if="loading">
+              <v-list-item
+                v-for="(name, index) in Object.values(roleMap)"
+                :key="index"
+                class="text-body-1 font-weight-regular text--secondary"
+                link
+              >
+                <v-list-item-content>
+                  <v-list-item-title>{{ name }} </v-list-item-title>
+                </v-list-item-content>
+              </v-list-item>
+            </div>
 
             <v-list-item
               v-for="item in editedRoles.defaultRoles"
+              v-else
               :key="item.name"
               link
               :style="
@@ -190,27 +205,22 @@ export default {
               <v-list-item-content @click="handleRoleSelect(item, 'default')">
                 <v-list-item-title
                   :class="selectedRole === item.id ? 'primary--text' : ''"
-                  class="text-body-2"
+                  class="text-body-1 font-weight-regular text--secondary"
                   >{{ formatName(item.name) }}</v-list-item-title
                 >
               </v-list-item-content>
             </v-list-item>
           </v-list>
 
-          <v-list
-            v-if="
-              editedRoles &&
-                editedRoles.tenantRoles &&
-                editedRoles.tenantRoles.length
-            "
-            dense
-            nav
-          >
+          <v-list v-if="hasPermission('feature', 'custom-role')" dense nav>
             <v-list-item>
               <v-list-item-content>
-                <v-list-item-title class="text-subtitle-1">
+                <v-list-item-title
+                  class="text-h5 font-weight-light text--secondary pt-2"
+                >
                   Custom Roles
                   <v-btn
+                    v-if="!addRole && hasPermission('create', 'role')"
                     color="primary"
                     icon
                     small
@@ -222,46 +232,18 @@ export default {
                 <v-divider></v-divider>
               </v-list-item-content>
             </v-list-item>
-            <div v-if="loading" class="text-center">
-              <v-progress-linear
-                color="primary"
-                indeterminate
-              ></v-progress-linear>
-            </div>
 
-            <v-sheet v-else :style="{ overflow: 'auto' }" height="40vH">
-              <v-list-item
-                v-for="item in editedRoles.tenantRoles"
-                :key="item.value"
-                class="show-icon"
-                link
-              >
-                <v-list-item-content @click="handleRoleSelect(item, 'tenant')">
-                  <v-list-item-title
-                    :class="selectedRole === item.id ? 'primary--text' : ''"
-                    class="text-body-2"
-                    >{{ item.name }}
-                  </v-list-item-title>
-                </v-list-item-content>
-
-                <v-list-item-icon class="hidden-icon">
-                  <v-btn
-                    :disabled="defaultRoles.includes(item.name)"
-                    icon
-                    :loading="deletingRole === item.id"
-                    x-small
-                    color="error"
-                    @click="deleteRole(item)"
-                    ><v-icon>delete</v-icon></v-btn
-                  >
-                </v-list-item-icon>
-              </v-list-item>
-              <v-list-item v-if="addRole">
+            <v-sheet
+              v-if="!loading"
+              :style="{ overflow: 'auto' }"
+              height="40vH"
+            >
+              <v-list-item v-if="addRole" link>
                 <v-list-item-content>
                   <v-list-item-title>
                     <v-text-field
                       v-model="roleName"
-                      class="text-body-2 pa-0"
+                      class="text-body-1 font-weight-regular text--secondary pa-0"
                       required
                       autofocus
                       hide-details
@@ -279,6 +261,52 @@ export default {
                   >
                     <v-icon>clear</v-icon>
                   </v-btn>
+                </v-list-item-icon>
+              </v-list-item>
+              <v-list-item
+                v-for="item in editedRoles.tenantRoles"
+                :key="item.value"
+                class="show-icon"
+                link
+                :style="
+                  selectedRole === item.id
+                    ? { 'background-color': 'whiteSmoke' }
+                    : ''
+                "
+              >
+                <v-list-item-content @click="handleRoleSelect(item, 'tenant')">
+                  <v-list-item-title
+                    :class="selectedRole === item.id ? 'primary--text' : ''"
+                    class="text-body-1 font-weight-regular text--secondary"
+                    >{{ item.name }}
+                  </v-list-item-title>
+                </v-list-item-content>
+
+                <v-list-item-icon class="hidden-icon">
+                  <div v-if="deleteSelected === item.id">
+                    <v-btn
+                      :disabled="defaultRoles.includes(item.name)"
+                      outlined
+                      :loading="deletingRole === item.id"
+                      x-small
+                      color="error"
+                      @click="deleteRole(item)"
+                      >Delete</v-btn
+                    >
+                    <v-btn icon x-small text @click="deleteSelected = null">
+                      <v-icon small>close</v-icon>
+                    </v-btn>
+                  </div>
+                  <v-btn
+                    v-else
+                    :disabled="defaultRoles.includes(item.name)"
+                    icon
+                    x-small
+                    class="ml-1"
+                    color="error"
+                    @click="deleteSelected = item.id"
+                    ><v-icon>delete</v-icon></v-btn
+                  >
                 </v-list-item-icon>
               </v-list-item>
             </v-sheet>
